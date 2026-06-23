@@ -1,0 +1,194 @@
+@startuml PreliminarySizing
+
+title Diagrama de Classes - Preliminary Sizing
+
+skinparam classAttributeIconSize 0
+skinparam shadowing false
+skinparam packageStyle rectangle
+skinparam linetype ortho
+left to right direction
+
+package "Core" {
+    enum PropulsionType {
+        Jet
+        Propeller
+    }
+
+    class AircraftClass {
+        - name: std::string
+        - A: double
+        - B: double
+        + AircraftClass(name: std::string, A: double, B: double)
+        + getName(): std::string
+        + getB(): double
+        + emptyWeightFraction(grossWeight_lbf: double): double
+        {static} + sailplane(): AircraftClass
+        {static} + poweredSailplane(): AircraftClass
+        {static} + lsaLand(): AircraftClass
+        {static} + lsaAmphibious(): AircraftClass
+        {static} + gaSingleEngine(): AircraftClass
+        {static} + gaTwinPiston(): AircraftClass
+        {static} + gaTwinTurboprop(): AircraftClass
+        {static} + agricultural(): AircraftClass
+        {static} + businessJet(): AircraftClass
+    }
+
+    class Mission {
+        - segments: std::vector<std::unique_ptr<MissionSegment>>
+        + addSegment(segment: std::unique_ptr<MissionSegment>): void
+        + finalWeightFraction(): double
+        + getNumberOfSegments(): std::size_t
+    }
+
+    class WeightEstimator {
+        - aircraftClass: const AircraftClass&
+        - mission: const Mission&
+        - crewWeight_lbf: double
+        - payloadWeight_lbf: double
+        + WeightEstimator(aircraftClass: AircraftClass, mission: Mission, crewWeight_lbf: double, payloadWeight_lbf: double)
+        + residual(grossWeight_lbf: double): double
+        + estimateGrossWeight(initialGuess_lbf: double, tolerance: double, maxIterations: unsigned int): double
+    }
+}
+
+package "Mission Segments" {
+    abstract class MissionSegment {
+        + {abstract} getName(): std::string
+        + {abstract} weightFraction(): double
+    }
+
+    class TaxiTakeoffSegment {
+        - propulsionType: PropulsionType
+        - taxiTime_h: double
+        - maxPowerTime_h: double
+        - idleRatio: double
+        - maxRatio: double
+        - specificFuelConsumption: double
+        + TaxiTakeoffSegment(propulsionType: PropulsionType, taxiTime_h: double, maxPowerTime_h: double, idleRatio: double, maxRatio: double, specificFuelConsumption: double)
+        + getName(): std::string
+        + weightFraction(): double
+    }
+
+    class ClimbSegment {
+        - propulsionType: PropulsionType
+        - altitudeChange_ft: double
+        - rateOfClimb_fpm: double
+        - powerOrThrustRatio: double
+        - specificFuelConsumption: double
+        + ClimbSegment(propulsionType: PropulsionType, altitudeChange_ft: double, rateOfClimb_fpm: double, powerOrThrustRatio: double, specificFuelConsumption: double)
+        + getName(): std::string
+        + weightFraction(): double
+    }
+
+    class DescentSegment {
+        - propulsionType: PropulsionType
+        - altitudeChange_ft: double
+        - rateOfDescent_fpm: double
+        - powerOrThrustRatio: double
+        - specificFuelConsumption: double
+        + DescentSegment(propulsionType: PropulsionType, altitudeChange_ft: double, rateOfDescent_fpm: double, powerOrThrustRatio: double, specificFuelConsumption: double)
+        + getName(): std::string
+        + weightFraction(): double
+    }
+
+    class LandingSegment {
+        - landingFraction: double
+        + LandingSegment(landingFraction: double)
+        + getName(): std::string
+        + weightFraction(): double
+    }
+
+    abstract class CruiseRangeSegment {
+        # range_nm: double
+        # liftToDragRatio: double
+        + CruiseRangeSegment(range_nm: double, liftToDragRatio: double)
+    }
+
+    class JetCruiseRangeSegment {
+        - speed_ktas: double
+        - specificFuelConsumption: double
+        + JetCruiseRangeSegment(range_nm: double, speed_ktas: double, liftToDragRatio: double, specificFuelConsumption: double)
+        + getName(): std::string
+        + weightFraction(): double
+    }
+
+    class PropellerCruiseRangeSegment {
+        - specificFuelConsumption: double
+        - propellerEfficiency: double
+        + PropellerCruiseRangeSegment(range_nm: double, liftToDragRatio: double, specificFuelConsumption: double, propellerEfficiency: double)
+        + getName(): std::string
+        + weightFraction(): double
+    }
+
+    abstract class ReserveCruiseSegment {
+        # reserveTime_h: double
+        # liftToDragRatio: double
+        # specificFuelConsumption: double
+        + ReserveCruiseSegment(reserveTime_h: double, liftToDragRatio: double, specificFuelConsumption: double)
+    }
+
+    class JetReserveCruiseSegment {
+        + JetReserveCruiseSegment(reserveTime_h: double, liftToDragRatio: double, specificFuelConsumption: double)
+        + getName(): std::string
+        + weightFraction(): double
+    }
+
+    class PropellerReserveCruiseSegment {
+        - speed_ktas: double
+        - propellerEfficiency: double
+        + PropellerReserveCruiseSegment(reserveTime_h: double, speed_ktas: double, liftToDragRatio: double, specificFuelConsumption: double, propellerEfficiency: double)
+        + getName(): std::string
+        + weightFraction(): double
+    }
+}
+
+package "GUI" {
+    class MainWindow <<Qt Widget>> {
+        - setupInterface(): void
+        - updateCruiseFieldsState(): void
+        - getSelectedAircraftClass(): AircraftClass
+        - getSelectedPropulsionType(): PropulsionType
+        - calculateWeight(): void
+        + MainWindow(parent: QWidget*)
+    }
+}
+
+MissionSegment <|-- TaxiTakeoffSegment
+MissionSegment <|-- ClimbSegment
+MissionSegment <|-- DescentSegment
+MissionSegment <|-- LandingSegment
+MissionSegment <|-- CruiseRangeSegment
+MissionSegment <|-- ReserveCruiseSegment
+
+CruiseRangeSegment <|-- JetCruiseRangeSegment
+CruiseRangeSegment <|-- PropellerCruiseRangeSegment
+
+ReserveCruiseSegment <|-- JetReserveCruiseSegment
+ReserveCruiseSegment <|-- PropellerReserveCruiseSegment
+
+Mission "1" *-- "0..*" MissionSegment : owns
+WeightEstimator --> AircraftClass : uses
+WeightEstimator --> Mission : uses
+
+TaxiTakeoffSegment --> PropulsionType
+ClimbSegment --> PropulsionType
+DescentSegment --> PropulsionType
+
+MainWindow --> AircraftClass : selects
+MainWindow --> PropulsionType : selects
+MainWindow ..> Mission : creates
+MainWindow ..> WeightEstimator : creates
+MainWindow ..> MissionSegment : creates segments
+
+note right of Mission
+  Armazena os seguimentos de missão usando:
+  std::unique_ptr<MissionSegment>.
+  Polimorfismo DInâminco
+end note
+
+note bottom of WeightEstimator
+  Estima o peso total resolvendo a equção residual 
+  de forma iterativa.
+end note
+
+@enduml
